@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: seats
+      POSTGRES_USER: seats
+      POSTGRES_PASSWORD: seats
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seats -d seats"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  app:
+    build: .
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/seats
+      SPRING_DATASOURCE_USERNAME: seats
+      SPRING_DATASOURCE_PASSWORD: seats
+    ports:
+      - "8080:8080"
+    mem_limit: 512m
+    depends_on:
+      postgres:
+        condition: service_healthy
