@@ -70,6 +70,42 @@ Started: 2026-10-02
 **What Claude gave:** Step-by-step switch to Claude Code: install (native installer), authenticate, create the GitHub repo, drop in the .claude hook files, verify the hooks fire, and a suggested CLAUDE.md. Also noted Claude Code needs a paid plan and that the web chat log stops at entry 11.
 **What I did with it:** TODO
 
+### 12
+**Time:** 2026-10-02 07:30 UTC (logged automatically by hook, terminal session)
+**Prompt:**
+
+```text
+Read CLAUDE.md and docs/PLAN.md. Confirm the plan back to me in 5 lines, then we start phase 0.
+```
+**What I did with it:** TODO
+
+### 13
+**Time:** 2026-10-02 07:35 UTC (logged automatically by hook, terminal session)
+**Prompt:**
+
+```text
+Read CLAUDE.md and docs/PLAN.md. Confirm the plan back to me in 5 lines, then we start phase 0.
+```
+**What I did with it:** TODO
+
+### 14
+**Time:** 2026-10-02 15:34 UTC (logged automatically by hook, terminal session)
+**Prompt:**
+
+```text
+which place is the best to put values for db connection, for my production grade appln, we inject it from secret vault using helm, dont think we'll be using that
+```
+**What I did with it:** TODO
+
+### 15
+**Time:** 2026-10-02 15:46 UTC (logged automatically by hook, terminal session)
+**Prompt:**
+
+```text
+lets do the 3 phase commits then?
+```
+**What I did with it:** TODO
+
 ## Other AI usage
 
 - None so far. (Update this if I use Copilot, other chats, or any other tool.)
