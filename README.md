@@ -47,7 +47,7 @@ Render's free tier stops the instance after 15 minutes without inbound traffic a
 
 Mitigations:
 
-- The image ships a JDK 25 AOT cache built by a training run at image build time, to cut class loading and linking at startup.
+- The image ships a JDK 25 AOT cache built by a training run at image build time, to cut class loading and linking at startup. On Render this took Spring startup from 71.7 s to 40.3 s (`Started ... in` log line, 2026-10-05). End-to-end cold start with the cache is not yet re-measured.
 - An external monitor calls `/actuator/health/liveness` every 10 minutes so the instance does not spin down. Liveness does not touch the DB, so Neon may still suspend and costs ~5 s on the first DB request after it does.
 
 The service still survives a cold start without the keep-warm ping: it comes back on its own and returns 200; it is just slow.
