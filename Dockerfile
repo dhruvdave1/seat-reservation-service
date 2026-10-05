@@ -25,7 +25,10 @@ COPY --from=build /extracted/application/ ./
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError -XX:+UseSerialGC"
 # AOT cache training run (JDK 25, JEP 514/515): start the context, exit before Tomcat
 # starts. Flyway is off because no database exists at build time; nothing else connects.
-RUN java -XX:AOTCacheOutput=app.aot -Dspring.context.exit=onRefresh \
+# MaxRAM makes the build host size the heap as if it had the runtime's 512 MB: on a
+# large builder 75% of RAM exceeds 32 GB, compressed oops turn off, and the JVM then
+# rejects the cache at runtime ("saved state of UseCompressedOops ... is different").
+RUN java -XX:MaxRAM=512m -XX:AOTCacheOutput=app.aot -Dspring.context.exit=onRefresh \
         -Dspring.flyway.enabled=false -jar application.jar \
  && chown app:app app.aot
 USER app
