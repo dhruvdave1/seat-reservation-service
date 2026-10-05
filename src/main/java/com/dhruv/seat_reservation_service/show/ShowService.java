@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.dhruv.seat_reservation_service.common.InvalidRequestException;
+import com.dhruv.seat_reservation_service.common.NotFoundException;
 import com.dhruv.seat_reservation_service.show.ShowResponse.SeatCounts;
 import com.dhruv.seat_reservation_service.show.ShowResponse.SeatView;
 
@@ -36,6 +37,33 @@ public class ShowService {
 		List<SeatView> seats = labels.stream().map(label -> new SeatView(label, "available")).toList();
 		return new ShowResponse(id, name, request.pricePaise(), labels.size(),
 				new SeatCounts(labels.size(), 0, 0), seats);
+	}
+
+	/** Counts are derived from the same rows as the seat list, so they always agree. */
+	public ShowResponse get(UUID id) {
+		List<ShowRepository.SeatRow> rows = shows.findWithSeats(id);
+		if (rows.isEmpty()) {
+			throw new NotFoundException("Show " + id + " not found");
+		}
+		int available = 0;
+		int held = 0;
+		int confirmed = 0;
+		List<SeatView> seats = new ArrayList<>(rows.size());
+		for (ShowRepository.SeatRow row : rows) {
+			if (row.label() == null) {
+				continue; // LEFT JOIN on a show with no seats; V1 forbids that, but stay safe
+			}
+			switch (row.status()) {
+				case "available" -> available++;
+				case "held" -> held++;
+				case "confirmed" -> confirmed++;
+				default -> throw new IllegalStateException("Unknown seat status: " + row.status());
+			}
+			seats.add(new SeatView(row.label(), row.status()));
+		}
+		ShowRepository.SeatRow show = rows.getFirst();
+		return new ShowResponse(show.id(), show.name(), show.pricePaise(), show.totalSeats(),
+				new SeatCounts(available, held, confirmed), seats);
 	}
 
 	/**

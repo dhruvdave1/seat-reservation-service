@@ -25,6 +25,9 @@ Tests (Testcontainers starts its own Postgres):
 |---|---|
 | `GET /actuator/health/liveness` | Process is up. Never touches the DB. |
 | `GET /actuator/health/readiness` | DB reachable. Returns 503 when it is not. |
+| `POST /auth/token` | Issue a JWT (see Auth). Public. |
+| `POST /shows` | Create a show with all seats available. Admin token. |
+| `GET /shows/{id}` | Per-seat status and counts from one consistent snapshot. Public. 404 if unknown. |
 
 API endpoints are added phase by phase; see `docs/PLAN.md`.
 

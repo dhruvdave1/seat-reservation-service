@@ -15,6 +15,29 @@ class ShowRepository {
 		this.jdbc = jdbc;
 	}
 
+	/** One row per seat, show columns repeated. Empty list = no such show. */
+	record SeatRow(UUID id, String name, long pricePaise, int totalSeats, String label, String status) {
+	}
+
+	/**
+	 * Show and every seat in a single statement. In Postgres one statement reads one
+	 * snapshot, so the per-seat statuses (and the counts derived from them) are consistent
+	 * with each other even while reservations are committing. COLLATE "C" gives a stable
+	 * byte-order sort regardless of the database's default collation.
+	 */
+	List<SeatRow> findWithSeats(UUID id) {
+		return jdbc.sql("""
+				SELECT s.id, s.name, s.price_paise, s.total_seats, st.label, st.status
+				FROM shows s
+				LEFT JOIN seats st ON st.show_id = s.id
+				WHERE s.id = :id
+				ORDER BY st.label COLLATE "C"
+				""")
+			.param("id", id)
+			.query(SeatRow.class)
+			.list();
+	}
+
 	void insertShow(UUID id, String name, long pricePaise, int totalSeats) {
 		jdbc.sql("""
 				INSERT INTO shows (id, name, price_paise, total_seats)

@@ -1,10 +1,13 @@
 package com.dhruv.seat_reservation_service.show;
 
 import java.net.URI;
+import java.util.UUID;
 
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,6 +27,11 @@ class ShowController {
 	ResponseEntity<ShowResponse> create(@Valid @RequestBody CreateShowRequest request) {
 		ShowResponse show = service.create(request);
 		return ResponseEntity.created(URI.create("/shows/" + show.id())).body(show);
+	}
+
+	@GetMapping("/{id}")
+	ShowResponse get(@PathVariable UUID id) {
+		return service.get(id);
 	}
 
 }
