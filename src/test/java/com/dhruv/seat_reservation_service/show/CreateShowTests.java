@@ -2,19 +2,13 @@ package com.dhruv.seat_reservation_service.show;
 
 import java.util.UUID;
 
-import com.dhruv.seat_reservation_service.TestcontainersConfiguration;
+import com.dhruv.seat_reservation_service.IntegrationTest;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,21 +21,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// Security filters are off: POST /shows is denied until JWT auth lands in phase 2.
-@SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
-@Import(TestcontainersConfiguration.class)
-class CreateShowTests {
-
-	@Autowired
-	MockMvc mvc;
-
-	@Autowired
-	JdbcClient jdbc;
+class CreateShowTests extends IntegrationTest {
 
 	@Test
 	void createsShowWithAllSeatsAvailable() throws Exception {
-		MvcResult result = mvc.perform(post("/shows").contentType(MediaType.APPLICATION_JSON).content("""
+		MvcResult result = mvc.perform(post("/shows").header("Authorization", adminBearer()).contentType(MediaType.APPLICATION_JSON).content("""
 				{"name": "  Coldplay  ", "price_paise": 250000, "seats": [" A1", "A2 ", "B1"]}
 				"""))
 			.andExpect(status().isCreated())
@@ -69,7 +53,7 @@ class CreateShowTests {
 	@Test
 	void duplicateLabelsAfterTrimAreRejectedAndNothingIsStored() throws Exception {
 		long before = showCount();
-		mvc.perform(post("/shows").contentType(MediaType.APPLICATION_JSON).content("""
+		mvc.perform(post("/shows").header("Authorization", adminBearer()).contentType(MediaType.APPLICATION_JSON).content("""
 				{"name": "Dup", "price_paise": 100, "seats": ["A1", " A1", "A2"]}
 				"""))
 			.andExpect(status().isBadRequest())
@@ -94,7 +78,7 @@ class CreateShowTests {
 			"not json" })
 	void invalidInputIsA400ProblemDetail(String body) throws Exception {
 		long before = showCount();
-		mvc.perform(post("/shows").contentType(MediaType.APPLICATION_JSON).content(body))
+		mvc.perform(post("/shows").header("Authorization", adminBearer()).contentType(MediaType.APPLICATION_JSON).content(body))
 			.andExpect(status().isBadRequest())
 			.andExpect(header().string("Content-Type", startsWith("application/problem+json")));
 		assertThat(showCount()).isEqualTo(before);

@@ -19,6 +19,9 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/seats
       SPRING_DATASOURCE_USERNAME: seats
       SPRING_DATASOURCE_PASSWORD: seats
+      # Local-only values. Production sets its own in Render.
+      JWT_SECRET: local-dev-secret-at-least-32-bytes-long
+      ADMIN_KEY: local-admin-key
     ports:
       - "8080:8080"
     mem_limit: 512m

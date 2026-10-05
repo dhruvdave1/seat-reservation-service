@@ -28,6 +28,28 @@ Tests (Testcontainers starts its own Postgres):
 
 API endpoints are added phase by phase; see `docs/PLAN.md`.
 
+## Auth
+
+Every request except health, `GET /shows/{id}` and `POST /auth/token` needs `Authorization: Bearer <token>`. The user id is the token's `sub` claim; any user id in a request body is ignored. Tokens are HS256 JWTs and expire after 1 hour.
+
+`POST /auth/token` is a test-harness issuer: it signs a token for any `user_id` (`[A-Za-z0-9._@-]{1,64}`), so you can act as many users. Adding the admin key returns an admin token, which `POST /shows` requires.
+
+```sh
+# user token
+curl -s -X POST $URL/auth/token -H 'Content-Type: application/json' -d '{"user_id":"alice"}'
+# admin token
+curl -s -X POST $URL/auth/token -H 'Content-Type: application/json' -d '{"user_id":"ops","admin_key":"<ADMIN_KEY>"}'
+# -> {"access_token":"...","token_type":"Bearer","expires_in":3600}
+```
+
+| Case | Status |
+|---|---|
+| No or invalid/expired token | 401 |
+| Valid token without the admin role on `POST /shows` | 403 |
+| Wrong admin key on `/auth/token` | 403 |
+
+Required environment: `JWT_SECRET` (at least 32 bytes) and `ADMIN_KEY`. The app refuses to start without them.
+
 ## Deployment
 
 - App: Render free web service (Docker runtime), region Ohio (us-east-2).

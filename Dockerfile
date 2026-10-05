@@ -28,8 +28,11 @@ ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError -XX:+
 # MaxRAM makes the build host size the heap as if it had the runtime's 512 MB: on a
 # large builder 75% of RAM exceeds 32 GB, compressed oops turn off, and the JVM then
 # rejects the cache at runtime ("saved state of UseCompressedOops ... is different").
+# The auth secrets are throwaway placeholders that exist only for this build step.
 RUN java -XX:MaxRAM=512m -XX:AOTCacheOutput=app.aot -Dspring.context.exit=onRefresh \
-        -Dspring.flyway.enabled=false -jar application.jar \
+        -Dspring.flyway.enabled=false \
+        -DJWT_SECRET=aot-training-placeholder-not-a-secret-0000 -DADMIN_KEY=aot-training \
+        -jar application.jar \
  && chown app:app app.aot
 USER app
 EXPOSE 8080
