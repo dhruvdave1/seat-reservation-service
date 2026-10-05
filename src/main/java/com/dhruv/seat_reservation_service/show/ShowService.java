@@ -26,13 +26,15 @@ public class ShowService {
 	public ShowResponse create(CreateShowRequest request) {
 		String name = request.name().strip();
 		List<String> labels = SeatLabels.normalize(request.seats());
+		int perUserLimit = request.perUserLimit() != null ? request.perUserLimit()
+				: CreateShowRequest.DEFAULT_PER_USER_LIMIT;
 		UUID id = UUID.randomUUID();
 
-		shows.insertShow(id, name, request.pricePaise(), labels.size());
+		shows.insertShow(id, name, request.pricePaise(), labels.size(), perUserLimit);
 		shows.insertSeats(id, labels);
 
 		List<SeatView> seats = labels.stream().map(label -> new SeatView(label, "available")).toList();
-		return new ShowResponse(id, name, request.pricePaise(), labels.size(),
+		return new ShowResponse(id, name, request.pricePaise(), labels.size(), perUserLimit,
 				new SeatCounts(labels.size(), 0, 0), seats);
 	}
 
@@ -59,7 +61,7 @@ public class ShowService {
 			seats.add(new SeatView(row.label(), row.status()));
 		}
 		ShowRepository.SeatRow show = rows.getFirst();
-		return new ShowResponse(show.id(), show.name(), show.pricePaise(), show.totalSeats(),
+		return new ShowResponse(show.id(), show.name(), show.pricePaise(), show.totalSeats(), show.perUserLimit(),
 				new SeatCounts(available, held, confirmed), seats);
 	}
 

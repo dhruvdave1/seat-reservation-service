@@ -3,6 +3,7 @@ package com.dhruv.seat_reservation_service.show;
 import java.util.List;
 
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -16,7 +17,11 @@ import jakarta.validation.constraints.Size;
 public record CreateShowRequest(
 		@NotBlank @Size(max = 200) String name,
 		@NotNull @Positive @Max(CreateShowRequest.MAX_PRICE_PAISE) Long pricePaise,
-		@NotEmpty @Size(max = CreateShowRequest.MAX_SEATS) List<@NotBlank @Size(max = 16) String> seats) {
+		@NotEmpty @Size(max = CreateShowRequest.MAX_SEATS) List<@NotBlank @Size(max = 16) String> seats,
+		@Min(1) @Max(100) Integer perUserLimit) {
+
+	/** Spec default when the request does not set one (matches the V3 column default). */
+	public static final int DEFAULT_PER_USER_LIMIT = 4;
 
 	public static final int MAX_SEATS = 10_000;
 

@@ -42,12 +42,15 @@ public class ReservationService {
 	 *
 	 * <p>One transaction at READ COMMITTED (the Postgres default, which FOR UPDATE relies on
 	 * to re-check a row after waiting for its lock). Locks are always taken in the same
-	 * order (idempotency key, then seats in label order), so reserves cannot deadlock:
+	 * order (idempotency key, then seats in label order, then the user's seat-count row),
+	 * so reserves cannot deadlock:
 	 * <ol>
 	 * <li>Claim the idempotency key. A committed duplicate is replayed (same body) or
 	 * rejected (different body); an in-flight duplicate makes us wait for its outcome.
 	 * <li>Lock the requested seats that are still available, in label order. A short result
 	 * means this request cannot succeed; nothing durable has been written.
+	 * <li>Add the seats to the user's count for the show, only if it stays within the
+	 * per-user limit.
 	 * <li>Insert the reservation, priced by the database.
 	 * <li>Confirm the locked seats. They are ours and available, so all of them update.
 	 * <li>Store the response on the key, so retries replay it.
@@ -58,6 +61,7 @@ public class ReservationService {
 	 * @throws NotFoundException unknown show (404)
 	 * @throws UnknownSeatsException a label is not a seat of the show (400)
 	 * @throws SeatsUnavailableException a requested seat is taken (409)
+	 * @throws PerUserLimitException the user would exceed the show's per-user limit (409)
 	 * @throws IdempotencyMismatchException key reused with a different request (409)
 	 */
 	@Transactional
@@ -76,6 +80,11 @@ public class ReservationService {
 		List<String> locked = reservations.lockAvailableSeats(showId, labels);
 		if (locked.size() < labels.size()) {
 			throw declineReason(showId, labels);
+		}
+
+		// After the seat lock, so the common decline (seat taken) never touches this row.
+		if (!reservations.addUserSeats(showId, userId, labels.size())) {
+			throw new PerUserLimitException(labels.size());
 		}
 
 		UUID reservationId = UUID.randomUUID();

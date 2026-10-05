@@ -69,6 +69,8 @@ class CreateShowTests extends IntegrationTest {
 			"{\"name\": \"S\", \"price_paise\": -5, \"seats\": [\"A1\"]}",
 			"{\"name\": \"S\", \"price_paise\": 100.5, \"seats\": [\"A1\"]}",
 			"{\"name\": \"S\", \"price_paise\": 1000000001, \"seats\": [\"A1\"]}",
+			"{\"name\": \"S\", \"price_paise\": 100, \"seats\": [\"A1\"], \"per_user_limit\": 0}",
+			"{\"name\": \"S\", \"price_paise\": 100, \"seats\": [\"A1\"], \"per_user_limit\": 101}",
 			"{\"name\": \"S\", \"seats\": [\"A1\"]}",
 			"{\"name\": \"S\", \"price_paise\": 100, \"seats\": []}",
 			"{\"name\": \"S\", \"price_paise\": 100}",

@@ -88,6 +88,32 @@ public class ReservationRepository {
                 .update();
     }
 
+    /**
+     * Adds {@code seatCount} to the user's seats for this show if the result stays within
+     * the show's per-user limit. Returns false (nothing written) when it would not.
+     *
+     * <p>First reservation: the INSERT creates the row, and its SELECT yields no row when
+     * seatCount alone exceeds the limit. Later ones: ON CONFLICT locks the user's row, so
+     * one user's concurrent reserves are applied one at a time, each seeing the committed
+     * count of the previous one. The WHERE makes the increment conditional; the table's
+     * CHECK would reject an over-limit count even if this query were wrong.
+     */
+    public boolean addUserSeats(UUID showId, String userId, int seatCount) {
+        return jdbcClient.sql("""
+                        INSERT INTO user_show_seats (show_id, user_id, seat_count, seat_limit)
+                        SELECT s.id, :userId, :seatCount, s.per_user_limit
+                        FROM shows s
+                        WHERE s.id = :showId AND :seatCount <= s.per_user_limit
+                        ON CONFLICT (show_id, user_id) DO UPDATE
+                        SET seat_count = user_show_seats.seat_count + EXCLUDED.seat_count
+                        WHERE user_show_seats.seat_count + EXCLUDED.seat_count <= user_show_seats.seat_limit
+                        """)
+                .param("showId", showId)
+                .param("userId", userId)
+                .param("seatCount", seatCount)
+                .update() == 1;
+    }
+
     // Failure path only: called after lockAvailableSeats came back short, to tell the
     // client why. A successful reserve never runs these.
 

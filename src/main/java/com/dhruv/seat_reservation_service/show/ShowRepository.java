@@ -16,7 +16,8 @@ class ShowRepository {
 	}
 
 	/** One row per seat, show columns repeated. Empty list = no such show. */
-	record SeatRow(UUID id, String name, long pricePaise, int totalSeats, String label, String status) {
+	record SeatRow(UUID id, String name, long pricePaise, int totalSeats, int perUserLimit, String label,
+			String status) {
 	}
 
 	/**
@@ -27,7 +28,7 @@ class ShowRepository {
 	 */
 	List<SeatRow> findWithSeats(UUID id) {
 		return jdbc.sql("""
-				SELECT s.id, s.name, s.price_paise, s.total_seats, st.label, st.status
+				SELECT s.id, s.name, s.price_paise, s.total_seats, s.per_user_limit, st.label, st.status
 				FROM shows s
 				LEFT JOIN seats st ON st.show_id = s.id
 				WHERE s.id = :id
@@ -38,15 +39,16 @@ class ShowRepository {
 			.list();
 	}
 
-	void insertShow(UUID id, String name, long pricePaise, int totalSeats) {
+	void insertShow(UUID id, String name, long pricePaise, int totalSeats, int perUserLimit) {
 		jdbc.sql("""
-				INSERT INTO shows (id, name, price_paise, total_seats)
-				VALUES (:id, :name, :pricePaise, :totalSeats)
+				INSERT INTO shows (id, name, price_paise, total_seats, per_user_limit)
+				VALUES (:id, :name, :pricePaise, :totalSeats, :perUserLimit)
 				""")
 			.param("id", id)
 			.param("name", name)
 			.param("pricePaise", pricePaise)
 			.param("totalSeats", totalSeats)
+			.param("perUserLimit", perUserLimit)
 			.update();
 	}
 
