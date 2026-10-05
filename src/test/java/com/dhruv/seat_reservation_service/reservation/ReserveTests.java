@@ -53,21 +53,21 @@ class ReserveTests extends IntegrationTest {
 	@Test
 	void declineReasons() {
 		UUID show = createShow(100, "A1", "A2");
-		service.reserve(show, "bob", List.of("A2"));
+		service.reserve(show, "bob", List.of("A2"), null);
 
-		assertThatThrownBy(() -> service.reserve(UUID.randomUUID(), "alice", List.of("A1")))
+		assertThatThrownBy(() -> service.reserve(UUID.randomUUID(), "alice", List.of("A1"), null))
 			.isInstanceOf(NotFoundException.class);
-		assertThatThrownBy(() -> service.reserve(show, "alice", List.of("A1", "Z9")))
+		assertThatThrownBy(() -> service.reserve(show, "alice", List.of("A1", "Z9"), null))
 			.isInstanceOf(UnknownSeatsException.class);
-		assertThatThrownBy(() -> service.reserve(show, "alice", List.of("A1", "A2")))
+		assertThatThrownBy(() -> service.reserve(show, "alice", List.of("A1", "A2"), null))
 			.isInstanceOf(SeatsUnavailableException.class);
 	}
 
 	@Test
 	void allOrNothingLeavesNoTraceOnDecline() {
 		UUID show = createShow(100, "A1", "A2");
-		service.reserve(show, "bob", List.of("A2"));
-		assertThatThrownBy(() -> service.reserve(show, "alice", List.of("A1", "A2")))
+		service.reserve(show, "bob", List.of("A2"), null);
+		assertThatThrownBy(() -> service.reserve(show, "alice", List.of("A1", "A2"), null))
 			.isInstanceOf(SeatsUnavailableException.class);
 
 		assertThat(seatOwners(show)).containsOnlyKeys("A2"); // A1 still available
@@ -79,7 +79,7 @@ class ReserveTests extends IntegrationTest {
 	void hotSeatStormHasExactlyOneWinner() throws Exception {
 		UUID show = createShow(100, "A1", "A2");
 		int attempts = 200;
-		List<Outcome> outcomes = race(attempts, i -> service.reserve(show, "user-" + i, List.of("A1")));
+		List<Outcome> outcomes = race(attempts, i -> service.reserve(show, "user-" + i, List.of("A1"), null));
 
 		assertThat(outcomes).filteredOn(o -> o == Outcome.CONFIRMED).hasSize(1);
 		assertThat(outcomes).filteredOn(o -> o == Outcome.SEAT_TAKEN).hasSize(attempts - 1);
@@ -107,7 +107,7 @@ class ReserveTests extends IntegrationTest {
 		Map<UUID, List<String>> won = new ConcurrentHashMap<>();
 
 		List<Outcome> outcomes = race(requests.size(), i -> {
-			ReservationResponse r = service.reserve(show, "user-" + i, requests.get(i));
+			ReservationResponse r = service.reserve(show, "user-" + i, requests.get(i), null).response();
 			won.put(r.reservationId(), r.seats());
 		});
 

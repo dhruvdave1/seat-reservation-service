@@ -4,16 +4,21 @@ import java.util.List;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
  * Body of POST /shows/{id}/reserve. No user field: identity comes only from the token.
- * idempotency_key arrives in phase 4.
+ * The idempotency key may come here or in the Idempotency-Key header.
  */
 public record ReserveRequest(
-		@NotEmpty @Size(max = ReserveRequest.MAX_SEATS) List<@NotBlank @Size(max = 16) String> seats) {
+		@NotEmpty @Size(max = ReserveRequest.MAX_SEATS) List<@NotBlank @Size(max = 16) String> seats,
+		@Pattern(regexp = ReserveRequest.KEY_PATTERN) String idempotencyKey) {
 
-	/** Bounds the lock and update arrays; the per-user limit (phase 5) is far lower anyway. */
+	/** Bounds the lock and update arrays; the per-user limit is far lower anyway. */
 	public static final int MAX_SEATS = 100;
+
+	/** Printable ASCII without spaces, 1-128 chars (matches the V2 CHECK). */
+	public static final String KEY_PATTERN = "[\\x21-\\x7E]{1,128}";
 
 }

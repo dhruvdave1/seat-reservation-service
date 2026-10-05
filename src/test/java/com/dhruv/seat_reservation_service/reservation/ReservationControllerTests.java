@@ -16,6 +16,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -37,8 +38,8 @@ class ReservationControllerTests extends IntegrationTest {
 
 	@Test
 	void passesTokenSubjectAndNormalizedLabelsAndReturns201() throws Exception {
-		given(service.reserve(eq(showId), eq("alice"), eq(List.of("A1", "A2"))))
-			.willReturn(new ReservationResponse(UUID.randomUUID(), showId, "alice", List.of("A1", "A2"), 200, "confirmed"));
+		given(service.reserve(eq(showId), eq("alice"), eq(List.of("A1", "A2")), isNull()))
+			.willReturn(new ReservationService.ReserveResult(new ReservationResponse(UUID.randomUUID(), showId, "alice", List.of("A1", "A2"), 200, "confirmed"), false));
 
 		reserve(bearer("alice"), "{\"seats\": [\" A1\", \"A2 \"]}")
 			.andExpect(status().isCreated())
@@ -51,17 +52,17 @@ class ReservationControllerTests extends IntegrationTest {
 
 	@Test
 	void userIdInTheBodyIsIgnored() throws Exception {
-		given(service.reserve(any(), anyString(), anyList()))
-			.willReturn(new ReservationResponse(UUID.randomUUID(), showId, "alice", List.of("A1"), 100, "confirmed"));
+		given(service.reserve(any(), anyString(), anyList(), any()))
+			.willReturn(new ReservationService.ReserveResult(new ReservationResponse(UUID.randomUUID(), showId, "alice", List.of("A1"), 100, "confirmed"), false));
 
 		reserve(bearer("alice"), "{\"seats\": [\"A1\"], \"user_id\": \"mallory\"}").andExpect(status().isCreated());
 
-		verify(service).reserve(showId, "alice", List.of("A1"));
+		verify(service).reserve(showId, "alice", List.of("A1"), null);
 	}
 
 	@Test
 	void serviceConflictIsA409WithReason() throws Exception {
-		given(service.reserve(any(), anyString(), anyList())).willThrow(new SeatsUnavailableException(List.of("A1")));
+		given(service.reserve(any(), anyString(), anyList(), any())).willThrow(new SeatsUnavailableException(List.of("A1")));
 
 		reserve(bearer("alice"), "{\"seats\": [\"A1\"]}")
 			.andExpect(status().isConflict())
@@ -71,7 +72,7 @@ class ReservationControllerTests extends IntegrationTest {
 	@Test
 	void noTokenIs401() throws Exception {
 		reserve(null, "{\"seats\": [\"A1\"]}").andExpect(status().isUnauthorized());
-		verify(service, never()).reserve(any(), anyString(), anyList());
+		verify(service, never()).reserve(any(), anyString(), anyList(), any());
 	}
 
 	@ParameterizedTest
@@ -79,7 +80,7 @@ class ReservationControllerTests extends IntegrationTest {
 			"{\"seats\": [\"ABCDEFGHIJKLMNOPQ\"]}", "{\"seats\": [\"A1\", \" A1\"]}", "not json" })
 	void invalidBodyIs400AndNeverReachesTheService(String body) throws Exception {
 		reserve(bearer("alice"), body).andExpect(status().isBadRequest());
-		verify(service, never()).reserve(any(), anyString(), anyList());
+		verify(service, never()).reserve(any(), anyString(), anyList(), any());
 	}
 
 	@Test
