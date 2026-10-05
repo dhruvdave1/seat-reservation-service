@@ -1,14 +1,11 @@
 package com.dhruv.seat_reservation_service.show;
 
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
-import com.dhruv.seat_reservation_service.common.InvalidRequestException;
 import com.dhruv.seat_reservation_service.common.NotFoundException;
+import com.dhruv.seat_reservation_service.common.SeatLabels;
 import com.dhruv.seat_reservation_service.show.ShowResponse.SeatCounts;
 import com.dhruv.seat_reservation_service.show.ShowResponse.SeatView;
 
@@ -28,7 +25,7 @@ public class ShowService {
 	@Transactional
 	public ShowResponse create(CreateShowRequest request) {
 		String name = request.name().strip();
-		List<String> labels = normalizeLabels(request.seats());
+		List<String> labels = SeatLabels.normalize(request.seats());
 		UUID id = UUID.randomUUID();
 
 		shows.insertShow(id, name, request.pricePaise(), labels.size());
@@ -64,27 +61,6 @@ public class ShowService {
 		ShowRepository.SeatRow show = rows.getFirst();
 		return new ShowResponse(show.id(), show.name(), show.pricePaise(), show.totalSeats(),
 				new SeatCounts(available, held, confirmed), seats);
-	}
-
-	/**
-	 * Strips surrounding whitespace and rejects duplicates, so " A1" and "A1" cannot become
-	 * two seats. Reserve must normalize labels the same way.
-	 */
-	static List<String> normalizeLabels(List<String> raw) {
-		List<String> labels = new ArrayList<>(raw.size());
-		Set<String> seen = new HashSet<>();
-		Set<String> duplicates = new LinkedHashSet<>();
-		for (String label : raw) {
-			String stripped = label.strip();
-			if (!seen.add(stripped)) {
-				duplicates.add(stripped);
-			}
-			labels.add(stripped);
-		}
-		if (!duplicates.isEmpty()) {
-			throw new InvalidRequestException("Duplicate seat labels: " + duplicates);
-		}
-		return labels;
 	}
 
 }
