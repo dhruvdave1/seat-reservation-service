@@ -5,6 +5,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -25,21 +26,23 @@ public class ReservationRepository {
             OffsetDateTime cancelledAt) {}
 
     /**
-     * Inserts a confirmed reservation priced from the show row (price * seat count).
-     * Returns 0 when the show does not exist, 1 otherwise.
+     * Inserts a confirmed reservation priced from the show row (price * seat count) and
+     * returns the amount the database computed. Empty when the show does not exist.
      */
-    public int insertReservation(UUID reservationId, String userId, UUID showId, int seatCount) {
+    public Optional<Long> insertReservation(UUID reservationId, String userId, UUID showId, int seatCount) {
         return jdbcClient.sql("""
                         INSERT INTO reservations (id, user_id, show_id, amount_paise, status)
                         SELECT :reservationId, :userId, s.id, s.price_paise * :seatCount, 'confirmed'
                         FROM shows s
                         WHERE s.id = :showId
+                        RETURNING amount_paise
                         """)
                 .param("reservationId", reservationId)
                 .param("userId", userId)
                 .param("seatCount", seatCount)
                 .param("showId", showId)
-                .update();
+                .query(Long.class)
+                .optional();
     }
 
     /**
@@ -83,5 +86,34 @@ public class ReservationRepository {
                 .param("showId", showId)
                 .param("labels", labels.toArray(String[]::new))
                 .update();
+    }
+
+    // Failure path only: called after lockAvailableSeats came back short, to tell the
+    // client why. A successful reserve never runs these.
+
+    /** True if the show exists (404 otherwise). */
+    public boolean showExists(UUID showId) {
+        return jdbcClient.sql("SELECT EXISTS (SELECT 1 FROM shows WHERE id = :showId)")
+                .param("showId", showId)
+                .query(Boolean.class)
+                .single();
+    }
+
+    /**
+     * Which of the requested labels are real seats of this show, whatever their status.
+     * Any requested label missing from the result is unknown (400); if none are missing,
+     * the short lock means a seat is taken (409).
+     */
+    public List<String> existingLabels(UUID showId, List<String> labels) {
+        return jdbcClient.sql("""
+                        SELECT label
+                        FROM seats
+                        WHERE show_id = :showId
+                          AND label = ANY(CAST(:labels AS text[]))
+                        """)
+                .param("showId", showId)
+                .param("labels", labels.toArray(String[]::new))
+                .query(String.class)
+                .list();
     }
 }

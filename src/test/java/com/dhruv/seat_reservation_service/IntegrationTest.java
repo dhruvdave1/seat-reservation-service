@@ -13,8 +13,9 @@ import org.springframework.test.web.servlet.MockMvc;
  * Shared setup so every integration test reuses one Spring context and one Postgres
  * container, with security filters on.
  */
+// Pool of 50 so concurrency tests really overlap transactions instead of queueing on 10 connections.
 @SpringBootTest(properties = { "app.auth.jwt-secret=" + IntegrationTest.JWT_SECRET,
-		"app.auth.admin-key=" + IntegrationTest.ADMIN_KEY })
+		"app.auth.admin-key=" + IntegrationTest.ADMIN_KEY, "spring.datasource.hikari.maximum-pool-size=50" })
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 public abstract class IntegrationTest {
