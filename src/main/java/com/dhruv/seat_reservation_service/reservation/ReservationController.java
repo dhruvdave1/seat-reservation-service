@@ -22,8 +22,11 @@ class ReservationController {
 
 	private final ReservationService service;
 
-	ReservationController(ReservationService service) {
+	private final CancelService cancelService;
+
+	ReservationController(ReservationService service, CancelService cancelService) {
 		this.service = service;
+		this.cancelService = cancelService;
 	}
 
 	/**
@@ -38,6 +41,12 @@ class ReservationController {
 		List<String> labels = SeatLabels.normalize(request.seats());
 		String key = idempotencyKey(headerKey, request.idempotencyKey());
 		return service.reserve(showId, jwt.getSubject(), labels, key).response();
+	}
+
+	/** Owner-only: the caller is the token subject, compared with the reservation's user in SQL. */
+	@PostMapping("/reservations/{reservationId}/cancel")
+	ReservationResponse cancel(@PathVariable UUID reservationId, @AuthenticationPrincipal Jwt jwt) {
+		return cancelService.cancel(reservationId, jwt.getSubject());
 	}
 
 	private static String idempotencyKey(String header, String body) {
