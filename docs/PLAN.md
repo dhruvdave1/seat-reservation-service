@@ -104,7 +104,18 @@ I write and can explain: reserve transaction, idempotency, per-user limit, cance
 
 ## Status
 
-- [ ] Public repo created
-- [ ] Project generated from start.spring.io and building (./mvnw verify)
-- [ ] Hooks and logs committed
+- [x] Public repo created
+- [x] Project generated from start.spring.io and building (./mvnw verify)
+- [x] Hooks and logs committed
 - [ ] Questions sent to recruiter
+- [x] Phases 0-7 built, tested and deployed; phase 8 burst script written and run; phase 9 README and WRITEUP draft written
+
+## Deviations from this plan (as built)
+
+- Reserve flow order: claim idempotency key, then `SELECT ... ORDER BY label FOR UPDATE` on available seats (lock first, so declines write nothing), then the per-user count, then insert the reservation, then confirm seats. The reservation is inserted after the seat lock, not first.
+- Per-user limit table is `user_show_seats(seat_count, seat_limit)`; the limit is copied into the row so a CHECK can enforce it.
+- Declines are not stored under the idempotency key (section 5 decision): the key claim rolls back with the decline.
+- Unknown seat labels are 400 `unknown_seat`, not 409.
+- Cancel is `POST /reservations/{id}/cancel`; a second cancel is 409 `already_cancelled`.
+- Under load on 0.1 CPU, unbounded virtual-thread concurrency caused pool-timeout 500s; requests now run on 10 platform threads, one per pooled connection (a semaphore bulkhead on virtual threads was tried and was worse). See README "Measured runs".
+- The reserve transaction, idempotency, per-user limit, cancel and the WRITEUP draft were written by Claude at the author's explicit request (section 10 originally reserved them for the author).
