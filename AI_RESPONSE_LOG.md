@@ -1278,3 +1278,10 @@ One more client-side limit to rule out: macOS allows only 256 open files per she
 
 ---
 
+### 78
+**Time:** 2026-10-06 12:05 UTC
+
+Those two matches are just the placeholder examples (`user:pass@host`) from my Neon explanation. No real secret appears. Committing in three parts, checking each staged file against disk:
+
+---
+

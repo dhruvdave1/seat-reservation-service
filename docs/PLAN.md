@@ -107,7 +107,7 @@ I write and can explain: reserve transaction, idempotency, per-user limit, cance
 - [x] Public repo created
 - [x] Project generated from start.spring.io and building (./mvnw verify)
 - [x] Hooks and logs committed
-- [ ] Questions sent to recruiter
+- [ ] Questions sent to recruiter (skipped for time; the assumptions are documented in the README instead)
 - [x] Phases 0-7 built, tested and deployed; phase 8 burst script written and run; phase 9 README and WRITEUP draft written
 
 ## Deviations from this plan (as built)

@@ -1,6 +1,6 @@
 # WRITEUP
 
-> **Draft written by Claude (AI) at the author's request, from the code, tests and measured runs in this repo. The author must rewrite it in their own words before submission (PLAN section 10). Every number here comes from a recorded run; see "Measurements".**
+> **Disclosure: this write-up was written by Claude (AI) at the author's request, from the code, tests and measured runs in this repo, because there was no time for the author to write it themselves. It is not in the author's own words. Section 9 says what the author directed and decided versus what the AI did. Every number comes from a recorded run; see "Measurements".**
 
 ## 1. The atomic mechanism and why it is race-free
 
@@ -77,19 +77,52 @@ The service chooses consistency. Every decision is made inside Postgres; if the 
 
 ## 8. What pages me at 2am
 
-To be written by the author. Candidates from what the service exposes:
+Paging alerts, in order of severity. Each is something the service already exposes.
 
-- Any 5xx on reserve (`http_server_requests_seconds_count{status=~"5.."}`): every decline should be a 4xx.
-- `transaction_retries_total` rising: deadlocks or serialization failures that should not happen with the lock order.
-- Readiness failing (database unreachable).
-- `seats_available + seats_held + seats_confirmed` not equal to total seats (cannot happen by construction; if it does, data is corrupt).
-- p99 latency or Hikari pending connections climbing (capacity, see Measurements).
+1. **Any 5xx from the app on reserve or cancel** (`http_server_requests_seconds_count{status=~"5.."}` for those URIs). Every expected outcome is a 4xx, and the code deliberately turns impossible states (a locked seat that fails to update, a missing seat-count row) into 500s instead of fake 409s. So an app 5xx means a real bug or a database failure, not load. Page immediately.
+2. **Readiness failing** (`/actuator/health/readiness` 503). The database is unreachable or the pool cannot get a connection, so no reservation can succeed. Page.
+3. **Seat invariant broken**: `seats_available + seats_held + seats_confirmed` differs from the total seats in `shows`, or a seat is `confirmed` with no confirmed reservation. The schema's CHECKs and foreign keys should make this impossible; if it happens, data is corrupt. Page and stop writes.
+4. **`transaction_retries_total` rising.** With one global lock order there should be no deadlocks. Retries mean a new code path broke the lock order, or the database is under unusual contention. Not an outage yet, so a ticket during the day, unless 5xx appear too.
+5. **Latency and 502s at the edge** (p99 of `http_server_requests_seconds`, Render's 502 rate). On the free tier this is the known capacity limit (see Measurements); in production it would mean scaling up, so it alerts but does not page unless it lasts.
+
+Not paged: high `reservations_declined_total{reason="seat_taken"}`. During an on-sale that is the system working.
 
 ## 9. AI usage: directed vs decided
 
-To be written by the author. Facts for reference: the prompts and responses are logged in `AI_PROMPT_LOG.md` and `AI_RESPONSE_LOG.md`. The author wrote the plan, the V1 schema and the reserve SQL statements; Claude reviewed them, suggested the composite foreign key, the lock-first order and the `SELECT ... FOR UPDATE` ordering, and at the author's explicit request wrote the reserve transaction body, idempotency, per-user limit, cancel, observability, the burst script and this draft. Commit messages say which code was AI-written.
+AI (Claude, through Claude Code) was used throughout. Every prompt and response is logged in `AI_PROMPT_LOG.md` and `AI_RESPONSE_LOG.md`, and commit messages note AI-written code. Honest split:
 
-## 10. What I would do next
+**Directed and decided by the author**
+- The plan, phases and stack (Java 25, Boot 4, Postgres, Flyway, plain SQL, no Kafka), written up in `docs/PLAN.md` from an earlier planning session that also used AI.
+- The working agreement: the author would write the core transaction, AI would scaffold and review. This changed under time pressure (below).
+- No users table; identity comes only from the JWT.
+- The table design and the V1 migration, written by the author and revised after AI review.
+- The two original reserve statements: the reservation `INSERT ... SELECT` that prices from the show row, and the conditional seat `UPDATE ... WHERE status = 'available'`.
+- Unknown seat labels are a 400, not a 409.
+- Staying on Render's free tier rather than paying, accepting the capacity limit.
+- All infrastructure accounts and secrets (Render, Neon, UptimeRobot, `JWT_SECRET`, `ADMIN_KEY`), set up by the author and never shared with the AI.
+
+**Found by AI in review, accepted by the author**
+- A seat could reference another show's reservation; fixed with a composite foreign key.
+- A multi-row `UPDATE ... label = ANY(...)` does not guarantee lock order and can deadlock; replaced by `SELECT ... ORDER BY label FOR UPDATE` before the update.
+- `price * seats` could overflow bigint into a 500; price is capped.
+- Lock first, insert second, so declines write nothing.
+
+**Written by AI**
+- Scaffolding, Dockerfile with the AOT cache, compose, CI, JWT wiring, `/auth/token`, `POST /shows`, `GET /shows/{id}`.
+- At the author's explicit request (overriding the working agreement, for time): the reserve transaction body, idempotency, the per-user limit, cancel, metrics, JSON logs, retry, the burst script, the README and this write-up.
+- All tests, including the concurrency tests. AI checked them by mutation: deliberately breaking the lock order or the availability guard made them fail.
+
+**AI mistakes, caught and fixed**
+- Committed a stale staged copy of V1, which was deployed to Neon. Fixed by resetting the empty Neon schema and correcting V1.
+- Accepted a check that could not tell an empty schema from a missing one, which led to a failed deploy.
+- Read Render's health 200 as proof of a new deploy, when Render was still serving the old instance.
+- An AOT cache that worked locally was rejected on Render (compressed-oops mismatch). Found from the deploy log.
+- Configured unbounded virtual threads, which produced 500s under load at 0.1 CPU. Found by the burst test and replaced with a thread cap.
+- Several bugs in its own test tooling: a deadlock test too weak to fail, one faulty mutation, and burst-client bugs (HTTP/2 stream cap, an infinite loop on one-seat shows). Each was caught before its numbers were trusted.
+
+**What this means for the author's understanding:** the parts AI wrote late (Phases 4-8) were not written by the author. The author is responsible for them and directed what they must do, but answers about their details may come from reading the code and its comments rather than from memory.
+
+## 10. What would come next
 
 - Transactional outbox for downstream events (payment, notifications), instead of a broker in the decision path.
 - Time-boxed holds with expiry (status `held` plus `held_until`, released by a conditional update), if the product needs a payment step.
