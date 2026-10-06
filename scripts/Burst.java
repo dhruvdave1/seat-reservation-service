@@ -33,7 +33,11 @@ class Burst {
 			String key, boolean duplicate, long micros, String error) {
 	}
 
+	// HTTP/1.1: one connection per in-flight request. Over HTTP/2 every request shares one
+	// connection, and Render's edge caps concurrent streams per connection (~100); the JDK
+	// client then fails requests with "too many concurrent streams" instead of opening more.
 	static final HttpClient http = HttpClient.newBuilder()
+		.version(HttpClient.Version.HTTP_1_1)
 		.connectTimeout(Duration.ofSeconds(15))
 		.executor(Executors.newVirtualThreadPerTaskExecutor())
 		.build();
@@ -134,10 +138,11 @@ class Burst {
 		List<Planned> plan = new ArrayList<>();
 		for (int i = 0; i < requests; i++) {
 			String user = userIds.get(random.nextInt(userIds.size()));
-			int n = random.nextDouble() < 0.1 ? 2 : 1;
+			// two-seat requests only when the show has two seats; a pool smaller than n falls back to all seats
+			int n = Math.min(random.nextDouble() < 0.1 ? 2 : 1, labels.size());
 			Set<String> seats = new TreeSet<>();
 			while (seats.size() < n) {
-				List<String> pool = random.nextDouble() < hotShare ? hotSeats : labels;
+				List<String> pool = random.nextDouble() < hotShare && hotSeats.size() >= n ? hotSeats : labels;
 				seats.add(pool.get(random.nextInt(pool.size())));
 			}
 			Planned p = new Planned(user, List.copyOf(seats), runTag + "-k" + i, false);
@@ -195,7 +200,12 @@ class Burst {
 		// 6. Reconciliation.
 		System.out.println("\n== reconciliation");
 		List<String> failures = new ArrayList<>(limitChecks);
-		check(failures, limitChecks.isEmpty(), "per-user limit held under 10 parallel reserves");
+		if (freeSeats.size() >= 10) {
+			check(failures, limitChecks.isEmpty(), "per-user limit held under 10 parallel reserves");
+		}
+		else {
+			System.out.println("  [skip] per-user limit storm (needs 10 free non-hot seats)");
+		}
 		String showAfter = send(get("/shows/" + showId)).body();
 		int total = Integer.parseInt(field(showAfter, "total_seats"));
 		int available = Integer.parseInt(field(showAfter, "available"));
