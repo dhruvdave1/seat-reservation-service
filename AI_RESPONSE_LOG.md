@@ -1285,3 +1285,32 @@ Those two matches are just the placeholder examples (`user:pass@host`) from my N
 
 ---
 
+### 79
+**Time:** 2026-10-06 12:09 UTC
+
+One claim I made in §9 isn't something I know: that you *reviewed* the Phases 4-8 code. Correcting it to what's actually true, and marking the recruiter questions as skipped in PLAN:
+
+---
+
+### 80
+**Time:** 2026-10-06 12:28 UTC
+
+API Error: 529 Overloaded. This is a server-side issue, usually temporary — try again in a moment. If it persists, check https://status.claude.com.
+
+---
+
+### 81
+**Time:** 2026-10-06 12:46 UTC
+
+I can't open a pull request here: every change from this session is already **on `main`**. Over the session you asked me to commit and push straight to `main` each time, so `main` and `origin/main` are identical. A PR needs a branch that differs from its base, and there is none.
+
+The only uncommitted changes are the two AI log files, which the hooks have updated since the last commit.
+
+Which do you want?
+1. **Commit the log updates straight to `main`**, like everything else. Simplest, with no PR.
+2. **Put them on a branch** (`docs/ai-logs`) and open a PR into `main`. That PR would contain only the two log files, not the session's work.
+
+If you wanted a PR because graders review PRs, the history on `main` already shows every change as a small Conventional Commit. Opening one now wouldn't add anything to that.
+
+---
+
